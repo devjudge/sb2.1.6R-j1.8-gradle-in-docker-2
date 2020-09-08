@@ -1,22 +1,7 @@
-buildscript {
-	repositories {
-		mavenCentral()
-	}
-	configurations.maybeCreate("pitest")
-	dependencies {
-		classpath 'info.solidsoft.gradle.pitest:gradle-pitest-plugin:1.4.5'
-		pitest 'org.pitest:pitest-junit5-plugin:0.10'
-	}
-}
-
 plugins {
 	id 'org.springframework.boot' version '2.1.6.RELEASE'
 	id 'java'
-	id 'jacoco'
-	id 'distribution'
 }
-
-apply plugin: "info.solidsoft.pitest"
 
 apply plugin: 'io.spring.dependency-management'
 
@@ -24,91 +9,16 @@ group = 'org.codejudge'
 version = '0.0.1-SNAPSHOT'
 sourceCompatibility = '1.8'
 
+configurations {
+	runtimeClasspath {
+		bootJar {
+			archiveFileName = 'spring-boot-in-docker.jar'
+		}
+	}
+}
+
 repositories {
 	mavenCentral()
-}
-
-configurations {
-	jacocoRuntime
-//	runtimeClasspath {
-//		bootJar {
-//			archiveFileName = 'spring-boot-in-docker.jar'
-//		}
-//	}
-}
-
-task instrument(dependsOn: [classes, project.configurations.jacocoAnt]) {
-
-	inputs.files classes.outputs.files
-	File outputDir = new File(project.buildDir, 'instrumentedClasses')
-	outputs.dir outputDir
-	doFirst {
-		project.delete(outputDir)
-		ant.taskdef(
-				resource: 'org/jacoco/ant/antlib.xml',
-				classpath: project.configurations.jacocoAnt.asPath,
-				uri: 'jacoco'
-		)
-		def instrumented = false
-		if (file(sourceSets.main.java.outputDir).exists()) {
-			def instrumentedClassedDir = "${outputDir}/${sourceSets.main.java}"
-			ant.'jacoco:instrument'(destdir: instrumentedClassedDir) {
-				fileset(dir: sourceSets.main.java.outputDir, includes: '**/*.class')
-			}
-			//Replace the classes dir in the test classpath with the instrumented one
-			sourceSets.test.runtimeClasspath -= files(sourceSets.main.java.outputDir)
-			sourceSets.test.runtimeClasspath += files(instrumentedClassedDir)
-			instrumented = true
-		}
-		if (instrumented) {
-			//Disable class verification based on https://github.com/jayway/powermock/issues/375
-			test.jvmArgs += '-noverify'
-		}
-	}
-}
-
-test {
-	jacoco {
-		append = false
-		destinationFile = file("jacoco/jacocoTest.exec")
-	}
-	reports.junitXml.destination = file("jacoco/test-results")
-	useJUnitPlatform {
-	}
-}
-
-jacocoTestReport.dependsOn(test)
-
-jacocoTestReport {
-	test.dependsOn instrument
-	dependsOn test
-}
-
-pitest {
-	pitestVersion = "1.4.9"
-	testPlugin = "junit5"
-	outputFormats = ['XML', 'HTML']
-	timestampedReports = false
-}
-
-distributions {
-	deliverables {
-		baseName = 'deliverables'
-		contents {
-			from '.'
-			exclude '.vs'
-			exclude 'build'
-			exclude 'gradle'
-			exclude '.gradle'
-			exclude '.idea'
-		}
-	}
-}
-
-distZip.dependsOn(deliverablesDistZip)
-
-task submit(type: GradleBuild) {
-	tasks = ['clean', 'distZip']
 }
 
 dependencies {
@@ -121,27 +31,4 @@ dependencies {
 	implementation 'mysql:mysql-connector-java'
 	compile 'io.springfox:springfox-swagger2:2.4.0'
 	compile 'io.springfox:springfox-swagger-ui:2.4.0'
-
-	jacocoRuntime group: 'org.jacoco', name: 'org.jacoco.agent', version: '0.8.4', classifier: 'runtime'
-
-	implementation group: 'org.apache.commons', name: 'commons-lang3', version: '3.10'
-	implementation group: 'org.springframework.security', name: 'spring-security-core', version: '5.3.0.RELEASE'
-	implementation group: 'javax.persistence', name: 'javax.persistence-api', version: '2.2'
-	implementation group: 'javax.xml.bind', name: 'jaxb-api', version: '2.3.1'
-	implementation 'org.slf4j:slf4j-simple:1.7.5'
-
-	testImplementation 'org.junit.jupiter:junit-jupiter-api:5.3.1'
-
-	testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.3.1'
-
-	testCompile group: 'junit', name: 'junit', version: '4.12'
-	testCompile group: 'org.powermock', name: 'powermock-api-mockito-common', version: '1.6.5'
-	testCompile group: 'org.powermock', name: 'powermock-module-junit4', version: '2.0.7'
-	testCompile group: 'org.powermock', name: 'powermock-api-mockito2', version: '2.0.2'
-	testCompile group: 'org.mockito', name: 'mockito-core', version: '2.23.4'
-	testCompile group: 'org.mockito', name: 'mockito-junit-jupiter', version: '2.23.0'
-	testCompile group: 'org.junit.platform', name: 'junit-platform-runner', version: '1.2.0'
-	testCompile group: 'org.assertj', name: 'assertj-core', version: '3.11.1'
-
-	testRuntime group: 'org.junit.vintage', name: 'junit-vintage-engine', version: '5.6.2'
 }
