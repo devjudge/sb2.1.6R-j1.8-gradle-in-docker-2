@@ -1,14 +1,21 @@
 tasks:
-  - before: |
-      wget -qOdatabase-setup.sh https://codejudge-starter-repo-artifacts.s3.ap-south-1.amazonaws.com/gitpod/backend/java/1.8/gitpod-setup.sh
+  - name: Terminal 1
+    openMode: split-left
+    before: |
+      wget -qOdatabase-setup.sh https://codejudge-starter-repo-artifacts.s3.ap-south-1.amazonaws.com/gitpod/env-setup-backend.sh 
       chmod 0755 database-setup.sh
-      bash database-setup.sh
-    init: ./gradlew build
-    command: java -jar ./build/libs/spring-boot-in-docker.jar
+      bash database-setup.sh java 8.0.292-zulu SPRING 2.1.6RELEASE use_gradle
+  - name: Terminal 2
+    openMode: split-right
+    command: |
+          gp ports await 8080
+          wget -qOverify_connection_url.sh https://codejudge-starter-repo-artifacts.s3.ap-south-1.amazonaws.com/gitpod/verify_connection_url.sh
+          chmod 0755 verify_connection_url.sh
+          bash verify_connection_url.sh 8080 BACKEND_MICRO_PROJECT && exit
 ports:
   - port: 8080
     name: "Backend Server"
-    onOpen: open-browser
+    onOpen: open-preview
     visibility: public
   - port: 3306
     name: "MySQL Server"
